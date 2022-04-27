@@ -43,8 +43,9 @@ public class HTTPServiceInvoker {
             return "applicationAccessHandler";
         }else if(StringUtils.contains(url, getProperties().getProperty("analysis.url"))) {
             return "textAnalyzerAccessHandler";
+        } else {
+            return "formAccessHandler";
         }
-        return "formAccessHandler";
     }
 
     public Properties getProperties() {
