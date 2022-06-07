@@ -21,7 +21,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @RequestMapping(RestResource.BASE_PATH+"/v1"+ ProcessDefinitionRestResource.PATH)
 public class ProcessDefinitionRestResourceImpl implements ProcessDefinitionRestResource {
 
-    Logger LOG = LoggerFactory.getLogger(ProcessDefinitionRestResourceImpl.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ProcessDefinitionRestResourceImpl.class);
 
     private final ProcessDefinitionRestService restService;
 
