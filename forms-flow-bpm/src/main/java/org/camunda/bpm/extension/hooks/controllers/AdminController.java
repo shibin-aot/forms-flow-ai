@@ -267,10 +267,10 @@ public class AdminController {
     private List<String> getGroups(Authentication authentication) throws ServletException {
 
         Map<String, Object> claims;
-        if (authentication instanceof JwtAuthenticationToken) {
-            claims = ((JwtAuthenticationToken)authentication).getToken().getClaims();
-        } else if (authentication.getPrincipal() instanceof OidcUser) {
-            claims = ((OidcUser)authentication.getPrincipal()).getClaims();
+        if (authentication instanceof JwtAuthenticationToken jwtAuthToken) {
+            claims = jwtAuthToken.getToken().getClaims();
+        } else if (authentication.getPrincipal() instanceof OidcUser oidcUser) {
+            claims = oidcUser.getClaims();
         } else {
             throw new ServletException("Invalid authentication request token");
         }

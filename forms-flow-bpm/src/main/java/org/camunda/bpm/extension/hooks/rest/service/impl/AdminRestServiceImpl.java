@@ -10,7 +10,6 @@ import org.camunda.bpm.engine.authorization.Permissions;
 import org.camunda.bpm.engine.authorization.ProcessDefinitionPermissions;
 import org.camunda.bpm.engine.authorization.Resources;
 import org.camunda.bpm.engine.impl.persistence.entity.AuthorizationEntity;
-import org.camunda.bpm.extension.commons.connector.HTTPServiceInvoker;
 import org.camunda.bpm.extension.hooks.controllers.data.Authorization;
 import org.camunda.bpm.extension.hooks.controllers.data.AuthorizationInfo;
 import org.camunda.bpm.extension.hooks.controllers.data.TenantAuthorizationDto;
@@ -27,6 +26,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import reactor.core.publisher.Mono;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
@@ -53,7 +53,7 @@ public class AdminRestServiceImpl extends AbstractRestService implements AdminRe
     }
 
     @Override
-    public ResponseEntity<AuthorizationInfo> getFormAuthorization() throws ServletException {
+    public Mono<ResponseEntity<AuthorizationInfo>> getFormAuthorization() throws ServletException {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         List<String> groups = getGroups(authentication);
@@ -64,7 +64,7 @@ public class AdminRestServiceImpl extends AbstractRestService implements AdminRe
         } else {
             authorizationInfo = new AuthorizationInfo(false, getAuthorization(groups));
         }
-        return ResponseEntity.ok(authorizationInfo);
+        return Mono.just(ResponseEntity.ok(authorizationInfo));
     }
 
     @Override
@@ -96,7 +96,6 @@ public class AdminRestServiceImpl extends AbstractRestService implements AdminRe
             createAuthorization(tenantKey, designerRole, Resources.PROCESS_DEFINITION, "*");
             createAuthorization(tenantKey, designerRole, Resources.PROCESS_INSTANCE, "*");
             createAuthorization(tenantKey, designerRole, Resources.TENANT, tenantKey);
-            createAuthorization(tenantKey, designerRole, Resources.DEPLOYMENT, "*");
         }
 
         // Reviewer authorizations
@@ -106,13 +105,13 @@ public class AdminRestServiceImpl extends AbstractRestService implements AdminRe
             createAuthorization(tenantKey, reviewerRole, Resources.TASK, "*");
             createAuthorization(tenantKey, reviewerRole, Resources.TENANT, tenantKey);
             createAuthorization(tenantKey, reviewerRole, Resources.FILTER, "*");
-            createAuthorization(tenantKey, reviewerRole, Resources.USER, Permissions.READ, "*");
+            createAuthorization(tenantKey, reviewerRole, Resources.USER, "*");
         }
         LOGGER.info("Finished creating authorizations for tenant");
     }
 
     @Override
-    public void createTenantDeployment(String tenantKey, MultipartFile file) throws ServletException {
+    public void createTenantDeployment(String tenantKey, MultipartFile file) {
 
         LOGGER.info("Deploying " + file.getOriginalFilename() + "; for Tenant " + tenantKey);
         try {
@@ -133,10 +132,10 @@ public class AdminRestServiceImpl extends AbstractRestService implements AdminRe
     private List<String> getGroups(Authentication authentication) throws ServletException {
 
         Map<String, Object> claims;
-        if (authentication instanceof JwtAuthenticationToken) {
-            claims = ((JwtAuthenticationToken)authentication).getToken().getClaims();
-        } else if (authentication.getPrincipal() instanceof OidcUser) {
-            claims = ((OidcUser)authentication.getPrincipal()).getClaims();
+        if (authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
+            claims = jwtAuthenticationToken.getToken().getClaims();
+        } else if (authentication.getPrincipal() instanceof OidcUser oidcUser) {
+            claims = oidcUser.getClaims();
         } else {
             throw new ServletException("Invalid authentication request token");
         }
@@ -205,24 +204,6 @@ public class AdminRestServiceImpl extends AbstractRestService implements AdminRe
         authEntity.setAuthorizationType(AUTH_TYPE_GRANT);
         authEntity.setGroupId(tenantKey + "-" + role);
         authEntity.addPermission(Permissions.ALL);
-        authEntity.setResourceId(resourceId);
-        authEntity.setResourceType(resourceType.resourceType());
-        this.authService.saveAuthorization(authEntity);
-    }
-
-    /**
-     * Create authorization entity.
-     *
-     * @param tenantKey
-     * @param role
-     * @param resourceType
-     * @param resourceId
-     */
-    private void createAuthorization(String tenantKey, String role, Resources resourceType, Permissions permissions, String resourceId) {
-        AuthorizationEntity authEntity = new AuthorizationEntity();
-        authEntity.setAuthorizationType(AUTH_TYPE_GRANT);
-        authEntity.setGroupId(tenantKey + "-" + role);
-        authEntity.addPermission(permissions);
         authEntity.setResourceId(resourceId);
         authEntity.setResourceType(resourceType.resourceType());
         this.authService.saveAuthorization(authEntity);
